@@ -1,3 +1,4 @@
+import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -6,38 +7,19 @@ import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 
 // Classe principal do programa
-public class NewOrderMain {
-
-    // Metodo principal (ponto de entrada da aplicação)
-    // Lança exceções porque usamos send().get(), que pode gerar erros de execução
+public class Producer {
     public static void main(String[] args) throws ExecutionException, InterruptedException {
 
-        // variavel que referencia um objeto e cria um Producer Kafka
-        // <String, String> indica o tipo da chave e do valor da mensagem
-        // properties() retorna as configurações do Kafka
         var producer = new KafkaProducer<String, String>(properties());
-
-        // Conteúdo da mensagem (exemplo: pedidoId, clienteId, produtoId)
         var value = "132123,67523,7894589745";
-
-        // Cria a mensagem que será enviada ao Kafka
-        // "ECOMMERCE_NEW_ORDER" -> nome do tópico
-        // value -> chave da mensagem (define a partição)
-        // value -> valor da mensagem (conteúdo)
         var record = new ProducerRecord<>("ECOMMERCE_NEW_ORDER", value, value);
 
-        // Envia a mensagem para o Kafka
-        // O envio é assíncrono e recebe um callback
-        producer.send(record, (data, ex) -> {
+        Callback callback = (data, ex) -> {
 
-            // Se ocorreu algum erro durante o envio
             if (ex != null){
                 ex.printStackTrace(); // Mostra o erro
                 return;
             }
-
-            // Caso o envio tenha sido bem-sucedido
-            // Exibe informações importantes da mensagem enviada
             System.out.println(
                     "sucesso enviando "
                             + data.topic()                 // tópico
@@ -45,13 +27,14 @@ public class NewOrderMain {
                             + "/ offset " + data.offset()        // posição da mensagem
                             + "/ timestamp " + data.timestamp()  // momento do envio
             );
-
-            // .get() faz o programa esperar o envio finalizar
-            // Transforma o envio assíncrono em síncrono
-        }).get();
+        };
+        var email = "Thank you for your order! We are processing your order!";
+        var emailRecord = new ProducerRecord<>("ECOMMERCE_SEND_EMAIL", email, email);
+        producer.send(record, callback).get();
+        producer.send(emailRecord, callback).get();
     }
 
-    // Método responsável por criar e retornar as configurações do Kafka Producer
+    // Metodo responsável por criar e retornar as configurações do Kafka Producer
     private static Properties properties(){
 
         // Cria o objeto de configurações
